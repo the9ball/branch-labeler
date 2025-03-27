@@ -1,0 +1,70 @@
+name: branch-labeler
+
+on:
+  workflow_call:
+    inputs:
+      token:
+        type: string
+        default: ${{ github.token }}
+      branch_name_filter:
+        required: true
+        type: string
+      label_prefix:
+        type: string
+        default: ""
+      label_suffix:
+        type: string
+        default: ""
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # for creating label
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - id: check-branch
+        name: Check branch name
+        run: |
+          if [[ "${{ github.base_ref }}" =~ ${{ inputs.branch_name_filter }} ]]; then
+              echo "MATCHING=true" >> ${GITHUB_ENV}
+          else
+              echo "MATCHING=false" >> ${GITHUB_ENV}
+          fi
+      - id: set-label
+        name: Set label
+        if: env.MATCHING == 'true'
+        run: |
+          base_ref="${{ github.base_ref }}"
+          base_ref="${base_ref//\//-}" # Replace slashes with dashes
+          echo TARGET_LABEL="${{ inputs.label_prefix }}${base_ref}${{ inputs.label_suffix }}" >> ${GITHUB_ENV}
+      - name: Create label
+        if: env.MATCHING == 'true'
+        run: |
+          if [[ ! $(gh label list --search "${TARGET_LABEL}" --json name --jq '.[].name' | grep -w "^${TARGET_LABEL}$") ]]; then
+              gh label create "${TARGET_LABEL}" --description "Created by ${{ github.workflow }}"
+          fi
+      - name: Remove label from PR(before base branch)
+        if: github.event.action == 'edited'
+        run: |
+          before_base_ref="${{ github.event.changes.base.ref.from }}"
+          before_base_ref="${before_base_ref//\//-}" # Replace slashes with dashes
+          before_base_label="${{ inputs.label_prefix }}${before_base_ref}${{ inputs.label_suffix }}"
+          gh pr edit ${{ github.event.pull_request.number }} --remove-label ${before_base_label} || :
+      - name: Remove label from PR(with prefix and suffix)
+        if: inputs.label_prefix != '' && inputs.label_suffix != ''
+        run: |
+          for label in $(gh pr view ${{ github.event.pull_request.number }} --json labels --jq '.labels[].name' | grep '^${{ inputs.label_prefix }}.*${{ inputs.label_suffix }}$'); do
+            gh pr edit ${{ github.event.pull_request.number }} --remove-label ${label} || :
+          done
+      - name: Add label to PR
+        if: env.MATCHING == 'true'
+        run: |
+          gh pr edit ${{ github.event.pull_request.number }} --add-label "${TARGET_LABEL}" || :
