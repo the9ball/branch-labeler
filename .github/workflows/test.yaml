@@ -1,0 +1,22 @@
+name: test
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - edited
+      - synchronize # for testing
+
+jobs:
+  call:
+    uses: ./.github/workflows/branch-labeler.yaml
+    permissions:
+      contents: write # for creating label
+      pull-requests: write
+    with:
+      branch_name_filter: "(feature|release)/.*"
