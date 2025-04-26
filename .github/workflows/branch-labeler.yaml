@@ -30,8 +30,10 @@ jobs:
       contents: write # for creating label
       pull-requests: write
     env:
-      GH_TOKEN: ${{ inputs.token }}
-      GH_REPO: ${{ inputs.repository }}
+      # The `GH_TOKEN` is being reassigned here to ensure it is explicitly set,
+      # as `github.token` might not be available at the workflow execution time.
+      GH_TOKEN: ${{ inputs.token || github.token }}
+      GH_REPO: ${{ inputs.repository || github.repository }}
     steps:
       - name: check auth
         run: gh auth status
