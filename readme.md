@@ -17,7 +17,7 @@ This repository contains a GitHub Action workflow for automatically labeling pul
 
 Getting Started
 ---
-To use this workflow, include the `the9ball/branch-labeler/.github/workflows/branch-labeler.yaml@v0.1.0` workflow in your repository.
+To use this workflow, include the `the9ball/branch-labeler/.github/workflows/branch-labeler.yaml@v0.1.1` workflow in your repository.
 
 ```yaml
 on:
@@ -29,7 +29,7 @@ on:
 
 jobs:
   call:
-    uses: the9ball/branch-labeler/.github/workflows/branch-labeler.yaml@v0.1.0
+    uses: the9ball/branch-labeler/.github/workflows/branch-labeler.yaml@v0.1.1
     permissions:
       contents: write # for creating label
       pull-requests: write
@@ -50,7 +50,7 @@ on:
 
 jobs:
   call:
-    uses: the9ball/branch-labeler/.github/workflows/branch-labeler.yaml@v0.1.0
+    uses: the9ball/branch-labeler/.github/workflows/branch-labeler.yaml@v0.1.1
     permissions:
       contents: write # for creating label
       pull-requests: write
@@ -63,6 +63,11 @@ jobs:
       # Basically, no need to specify.
       # Default: ${{ github.token }}
       token: ''
+
+      # Target repository
+      # Basically, no need to specify.
+      # Default: ${{ github.repository }}
+      repository: ''
 
       # Specify the prefix/suffix of the label to be created.
       label_prefix: ''

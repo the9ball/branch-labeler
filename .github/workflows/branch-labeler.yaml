@@ -6,6 +6,11 @@ on:
       token:
         type: string
         default: ${{ github.token }}
+        description: The GitHub token used for authentication. Defaults to github.token if not provided.
+      repository:
+        type: string
+        default: ${{ github.repository }}
+        description: The target repository for the operation. Defaults to github.repository if not provided.
       branch_name_filter:
         required: true
         type: string
@@ -27,16 +32,20 @@ jobs:
       contents: write # for creating label
       pull-requests: write
     env:
-      GH_TOKEN: ${{ github.token }}
-      GH_REPO: ${{ github.repository }}
+      # The `GH_TOKEN` is being reassigned here to ensure it is explicitly set,
+      # as `github.token` might not be available at the workflow execution time.
+      GH_TOKEN: ${{ inputs.token || github.token }}
+      GH_REPO: ${{ inputs.repository || github.repository }}
     steps:
+      - name: check auth
+        run: gh auth status
       - id: check-branch
         name: Check branch name
         run: |
           if [[ "${{ github.base_ref }}" =~ ${{ inputs.branch_name_filter }} ]]; then
-              echo "MATCHING=true" >> ${GITHUB_ENV}
+              echo "MATCHING=true" >> "${GITHUB_ENV}"
           else
-              echo "MATCHING=false" >> ${GITHUB_ENV}
+              echo "MATCHING=false" >> "${GITHUB_ENV}"
           fi
       - id: set-label
         name: Set label
@@ -44,11 +53,11 @@ jobs:
         run: |
           base_ref="${{ github.base_ref }}"
           base_ref="${base_ref//\//-}" # Replace slashes with dashes
-          echo TARGET_LABEL="${{ inputs.label_prefix }}${base_ref}${{ inputs.label_suffix }}" >> ${GITHUB_ENV}
+          echo TARGET_LABEL="${{ inputs.label_prefix }}${base_ref}${{ inputs.label_suffix }}" >> "${GITHUB_ENV}"
       - name: Create label
         if: env.MATCHING == 'true'
         run: |
-          if [[ ! $(gh label list --search "${TARGET_LABEL}" --json name --jq '.[].name' | grep -w "^${TARGET_LABEL}$") ]]; then
+          if ! gh label list --search "${TARGET_LABEL}" --json name --jq '.[].name' | grep -w "^${TARGET_LABEL}$"; then
               gh label create "${TARGET_LABEL}" --description "Created by ${{ github.workflow }}"
           fi
       - name: Remove label from PR(before base branch)
@@ -57,12 +66,12 @@ jobs:
           before_base_ref="${{ github.event.changes.base.ref.from }}"
           before_base_ref="${before_base_ref//\//-}" # Replace slashes with dashes
           before_base_label="${{ inputs.label_prefix }}${before_base_ref}${{ inputs.label_suffix }}"
-          gh pr edit ${{ github.event.pull_request.number }} --remove-label ${before_base_label} || :
+          gh pr edit ${{ github.event.pull_request.number }} --remove-label "${before_base_label}" || :
       - name: Remove label from PR(with prefix and suffix)
         if: inputs.label_prefix != '' && inputs.label_suffix != ''
         run: |
           for label in $(gh pr view ${{ github.event.pull_request.number }} --json labels --jq '.labels[].name' | grep '^${{ inputs.label_prefix }}.*${{ inputs.label_suffix }}$'); do
-            gh pr edit ${{ github.event.pull_request.number }} --remove-label ${label} || :
+            gh pr edit ${{ github.event.pull_request.number }} --remove-label "${label}" || :
           done
       - name: Add label to PR
         if: env.MATCHING == 'true'
