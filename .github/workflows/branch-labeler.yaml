@@ -30,7 +30,7 @@ jobs:
       contents: write # for creating label
       pull-requests: write
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ inputs.token }}
       GH_REPO: ${{ inputs.repository }}
     steps:
       - id: check-branch
