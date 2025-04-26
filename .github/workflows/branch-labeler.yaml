@@ -33,6 +33,8 @@ jobs:
       GH_TOKEN: ${{ inputs.token }}
       GH_REPO: ${{ inputs.repository }}
     steps:
+      - name: check auth
+        run: gh auth status
       - id: check-branch
         name: Check branch name
         run: |
